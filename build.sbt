@@ -13,17 +13,20 @@ resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 
 libraryDependencies ++= {
 	Seq(
-		"org.json4s"					%%		"json4s-jackson"						%			"3.3.0.RC6",
-		"io.spray"						%% 		"spray-json"								% 		"1.3.2",
+		"org.json4s"				%%		"json4s-jackson"						%			"3.3.0.RC6",
+		"io.spray"					%% 		"spray-json"								% 		"1.3.2",
 		"com.typesafe.akka"		%%		"akka-actor"								%			"2.4.0",
 		"com.typesafe.akka"		%%		"akka-stream-experimental"	%			"1.0",
-		"org.scalaz"					%%		"scalaz-core"								%			"7.2.0-M3"
+		"org.scalaz"				%%		"scalaz-core"								%			"7.2.0-M3",
+		"com.lihaoyi"				%%		"ammonite-repl"				%	"0.4.8"		%	"test" cross CrossVersion.full
 	)
 }
 
 scalacOptions in Test ++= Seq("-Yrangepos")
 
-mainClass in (Compile, run) := Some("org.dougybarbo.EntityResolver")
+initialCommands in (Test, console) := """ammonite.repl.Repl.run("")"""
+
+mainClass in (Compile, run) := Some("org.dougybarbo.EntityResolver.Main")
 
 javacOptions ++= Seq(
 	"-Xlint:unchecked",
