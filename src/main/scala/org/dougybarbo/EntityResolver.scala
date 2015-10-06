@@ -71,7 +71,6 @@ object EntityResolver extends App {
 	import actorSystem.dispatcher
 	implicit val flowMaterializer = ActorMaterializer()
 
-
 	val fnx = (x:List[String]) => List(x.head, x.reverse.head.toLowerCase)
 
 	val rawEntities = Source(
