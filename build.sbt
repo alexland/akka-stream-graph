@@ -16,7 +16,13 @@ libraryDependencies ++= {
 		"org.json4s"				%%		"json4s-jackson"						%			"3.3.0.RC6",
 		"io.spray"					%% 		"spray-json"								% 		"1.3.2",
 		"com.typesafe.akka"		%%		"akka-actor"								%			"2.4.0",
+		"com.typesafe.akka"					%%	"akka-cluster"						% 		"2.4.0",
+		"com.typesafe.akka" 					%%	"akka-slf4j"						% 		"2.4.0",
+		"com.typesafe.akka"					%%	"akka-agent"						% 		"2.4.0",
 		"com.typesafe.akka"		%%		"akka-stream-experimental"	%			"1.0",
+		"net.databinder.dispatch"				%%	"dispatch-core" 					%		"0.11.2",
+		"net.databinder.dispatch" 				%%	"dispatch-json4s-native" 			%		"0.11.2",
+		"com.fasterxml.jackson.module"		%% 	"jackson-module-scala"			%		"2.4.2",
 		"org.scalaz"				%%		"scalaz-core"								%			"7.2.0-M3",
 		"com.lihaoyi"				%%		"ammonite-repl"				%	"0.4.8"		%	"test" cross CrossVersion.full
 	)
