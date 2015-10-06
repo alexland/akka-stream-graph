@@ -2,10 +2,14 @@
 
 computation graph:
 
+to build:
 
-to run:
+```bash
+    %> cd <top-level/project/path>
+    %> sbt clean assembly
+```
 
-```Scala
+```bash
 	cd <top-level/project/path>
 	java -jar target/scala-2.11/EtlGraph.jar
 ```
@@ -13,7 +17,7 @@ to run:
 
 from the scala REPL:
 
-```Scala
+```bash
     sbt clean assembly
     sbt console
 ```
