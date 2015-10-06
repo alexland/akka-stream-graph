@@ -64,7 +64,7 @@ case class RawEntity(record: String)
 case class ResolvedEntity(dba: String, tickSym: String)
 
 
-object EntityResolver extends App {
+object Main {
 
 	implicit val actorSystem = ActorSystem("entity-resolver")
 	import actorSystem.dispatcher
@@ -99,27 +99,26 @@ object EntityResolver extends App {
 		}
 	}
 
+	def main(args: Array[String]): Unit = {
 
-	val graph = FlowGraph.closed() { implicit builder: FlowGraph.Builder[Unit] =>
-		import FlowGraph.Implicits._
-		val bcast = builder.add(Broadcast[RawEntity](2))
-		rawEntities ~> bcast.in
-		bcast.out(0) ~> transform1 ~> persistResolvedEntities
-		bcast.out(1) ~> transform1 ~> persistTickSyms
+		val graph = FlowGraph.closed() { implicit builder: FlowGraph.Builder[Unit] =>
+			import FlowGraph.Implicits._
+			val bcast = builder.add(Broadcast[RawEntity](2))
+			rawEntities ~> bcast.in
+			bcast.out(0) ~> transform1 ~> persistResolvedEntities
+			bcast.out(1) ~> transform1 ~> persistTickSyms
+		}
+		graph.run()
+
+		actorSystem.awaitTermination()
+		// actorSystem.shutdown()
+
 	}
 
-	/**
-	*	a RunnableGraph instance
-	*/
-	graph
-		.run()
-		.onComplete {
-			case Success(_) =>
-				actorSystem.shutdown()
-			case Failure(err) =>
-				println("failure: ${err.getMessage}")
-				actorSystem.shutdown()
-		}
+}
+
+
+
 		// .onComplete(_ => actorSystem.shutdown())
 		// .onComplete {
 		// 	x match {
@@ -140,7 +139,6 @@ object EntityResolver extends App {
 	// 			actorSystem.shutdown()
 	// 			actorSystem.awaitTermination()
 	// 	}
-}
 
 
 
