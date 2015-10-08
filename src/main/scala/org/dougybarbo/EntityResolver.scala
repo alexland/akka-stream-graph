@@ -28,92 +28,112 @@ import akka.stream.io.{
 	InputStreamSource
 }
 import akka.stream.scaladsl._
+
 import akka.util.ByteString
 import org.json4s.JsonAST.JString
 import org.json4s.jackson.JsonMethods._
 
-/**
-*	mocks data for the stream source;
-*	data bound to variable rawEntities in
-*	EntityResolver below
-*/
-object dataMock {
-
-	def genRawEntity():RawEntity = {
-		val genTickSym = (c:Int) => Seq.fill(c)(RND.alphanumeric(10))
-			.mkString
-			.toLowerCase
-		val d = "a b c d e f g h i j k l m n o p q r s t u v w x y z"
-			.split(" ")
-		val genDba = (c:Int) => Seq.fill(c)(d(RND.nextInt(25))).mkString
-
-		RawEntity(
-			s"${genDba(8)} ${genTickSym(4)}"
-		)
-	}
-}
-
-/**
-*	case class for the stream source
-*/
-case class RawEntity(record: String)
-
-/**
-*	case class for the stream sink
-*/
-case class ResolvedEntity(dba: String, tickSym: String)
 
 
 object Main {
 
-	implicit val actorSystem = ActorSystem("entity-resolver")
-	import actorSystem.dispatcher
-	implicit val flowMaterializer = ActorMaterializer()
-
-	val fnx = (x:List[String]) => List(x.head, x.reverse.head.toUpperCase)
-
-	val rawEntities:Source[RawEntity, Unit] = Source(
-											(1 to 100).map( _ => dataMock.genRawEntity())
-	)
-
-	/**
-	*	instance of class akka.stream.scaladsl.Flow
-	*/
-	val transform1:Flow[RawEntity, ResolvedEntity, Unit] = Flow[RawEntity]
-		.map(c => c.record.split(" ").toList)
-		.map(fnx(_))
-			.collect {
-				case dba::tickSym::Nil =>
-					ResolvedEntity(dba, tickSym)
-			}
-
-	val persistResolvedEntities:Sink[ResolvedEntity, Future[Unit]] = {
-		Sink.foreach[ResolvedEntity] { entity =>
-			println(entity)
-		}
-	}
-
-	val persistTickSyms:Sink[ResolvedEntity, Future[Unit]] = {
-		Sink.foreach[ResolvedEntity] { entity =>
-			println(entity.tickSym)
-		}
-	}
-
 	def main(args: Array[String]): Unit = {
 
-		val graph = FlowGraph.closed() { implicit builder: FlowGraph.Builder[Unit] =>
-			import FlowGraph.Implicits._
-			val bcast = builder.add(Broadcast[RawEntity](2))
-			rawEntities ~> bcast.in
-			bcast.out(0) ~> transform1 ~> persistResolvedEntities
-			bcast.out(1) ~> transform1 ~> persistTickSyms
+		final case class RawDataLine(idx:Int, col1:Int, col2:Int, col3:Int) {
+			def sumLine()
 		}
-		graph.run()
 
-		actorSystem.awaitTermination()
+		val fnx = () => for (i <- (1 to 4)) yield RND.nextInt(100)
 
+		val fnx1 = (q:Vector[Int]) => q match {
+			case Vector(a, b, c, d) => RawDataLine(a, b, c, d)
+		}
+
+		val rawDataIn: Source[RawDataLine, Unit] = Source(
+			(1 to 100)
+				.map(_ => fnx().toVector)
+				.map(c => fnx1(c))
+		)
+
+		implicit val actorSystem = ActorSystem("entity-resolver")
+		import actorSystem.dispatcher
+		implicit val flowMaterializer = ActorMaterializer()
+
+		/**
+		*	'count': a reusable Flow that transforms each item in the stream into a
+		*	a '1'
+		*	'counter', the Sink, can fold over it to get a count of items in the stream
+		*/
+		val count: Flow[RawDataLine, Int, Unit] = Flow[RawDataLine].map(_ => 1)
+		val counter: Sink[ Int, Future[Int] ] = Sink.fold[Int, Int](0)(_ + _)
+
+		val toVec = (q:RawDataLine) => q match {
+			case RawDataLine(a, b, c, d) => Vector(a, b, c, d)
+		}
+
+		val fnx1 = (v:Vector[Int]) => v.map(_ / 2)
+
+		val fnx2 = (v:Vector[Int]) => v.filter(_ >= 25)
+
+		val lineSum1: Flow[RawDataLine, Int, Unit] = Flow[RawDataLine]
+			.map(c => toVec(c).sum)
+
+		val lineSum2: Flow[Vector[Int], Int, Unit] = Flow[Vector[Int]]
+   			.map(c => c.sum)
+   		}
+
+		val lineDiv: Flow[RawDataLine, Vector[Int], Unit] = Flow[RawDataLine]
+			.map(c => toVec(c))
+			.map(fnx1(_))
+
+		val lineFilter1: Flow[Vector[Int], Vector[Int], Unit] = Flow[Vector[Int]]
+			.map(fnx2(_))
+
+		val streamSum: Sink[Int, Future[Int]] = Sink.fold[Int, Int](0)(_ + _)
+
+		/**
+		*	RunnableGraph instance is immutable, thread-safe, and freely shareable;
+		*	'Broadcast' will propagate back-pressure to its upstream element
+		*/
+		val countGraph: RunnableGraph[Future[Int]] =
+			rawDataIn
+				.via(count)
+				.toMat(counter)(Keep.right)
+
+		val res: Future[Int] = g1.run()
+		res.foreach(c => println(s"total lines processed: $c"))
+
+
+		val g1: RunnableGraph[Future[Int]] =
+			rawDataIn
+				.via(lineSum1)
+				.toMat(streamSum)(Keep.right)
+
+		val res: Future[Int] = g1.run()
+		res.foreach(c => println(s"stream sum is: $c"))			// 1842
+
+
+		val g2: RunnableGraph[Future[Int]] =
+			rawDataIn
+				.via(lineDiv)
+				.via(lineSum2)
+				.toMat(streamSum)(Keep.right)
+
+		val res: Future[Int] = g2.run()
+		res.foreach(c => println(s"stream sum is: $c"))			// 911
+
+		val g3: RunnableGraph[Future[Int]] =
+			rawDataIn
+				.via(lineDiv)
+				.via(lineFilter1)
+				.via(lineSum2)
+				.toMat(streamSum)(Keep.right)
+
+		val res: Future[Int] = g3.run()
+		res.foreach(c => println(s"stream sum is: $c"))				// 655
 
 	}
+
 
 }
 
