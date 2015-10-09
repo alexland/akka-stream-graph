@@ -34,14 +34,11 @@ import org.json4s.JsonAST.JString
 import org.json4s.jackson.JsonMethods._
 
 
-
 object Main {
 
 	def main(args: Array[String]): Unit = {
 
-		final case class RawDataLine(idx:Int, col1:Int, col2:Int, col3:Int) {
-			def sumLine()
-		}
+		final case class RawDataLine(idx:Int, col1:Int, col2:Int, col3:Int)
 
 		val fnx = () => for (i <- (1 to 4)) yield RND.nextInt(100)
 
@@ -50,10 +47,15 @@ object Main {
 		}
 
 		val rawDataIn: Source[RawDataLine, Unit] = Source(
-			(1 to 100)
+			(1 to 1000000)
 				.map(_ => fnx().toVector)
 				.map(c => fnx1(c))
 		)
+
+		// commify printed integer values
+		val formatter = java.text.NumberFormat.getIntegerInstance
+		val fmt = (v:Int) => formatter.format(v)
+
 
 		implicit val actorSystem = ActorSystem("entity-resolver")
 		import actorSystem.dispatcher
@@ -71,23 +73,26 @@ object Main {
 			case RawDataLine(a, b, c, d) => Vector(a, b, c, d)
 		}
 
-		val fnx1 = (v:Vector[Int]) => v.map(_ / 2)
+		/**
+		*	variables named t followed by integer are anonymous
+		*	functions that transform individual data lines
+		*/
+		val t1 = (v:Vector[Int]) => v.map(_ / 2)
 
-		val fnx2 = (v:Vector[Int]) => v.filter(_ >= 25)
+		val t2 = (v:Vector[Int]) => v.filter(_ <= 25)
 
 		val lineSum1: Flow[RawDataLine, Int, Unit] = Flow[RawDataLine]
 			.map(c => toVec(c).sum)
 
 		val lineSum2: Flow[Vector[Int], Int, Unit] = Flow[Vector[Int]]
    			.map(c => c.sum)
-   		}
 
 		val lineDiv: Flow[RawDataLine, Vector[Int], Unit] = Flow[RawDataLine]
 			.map(c => toVec(c))
-			.map(fnx1(_))
+			.map(t1(_))
 
 		val lineFilter1: Flow[Vector[Int], Vector[Int], Unit] = Flow[Vector[Int]]
-			.map(fnx2(_))
+			.map(t2(_))
 
 		val streamSum: Sink[Int, Future[Int]] = Sink.fold[Int, Int](0)(_ + _)
 
@@ -100,8 +105,8 @@ object Main {
 				.via(count)
 				.toMat(counter)(Keep.right)
 
-		val res: Future[Int] = g1.run()
-		res.foreach(c => println(s"total lines processed: $c"))
+		val res: Future[Int] = countGraph.run()
+		res.foreach( c => println( s"total lines processed per graph: " + fmt(c) ) )
 
 
 		val g1: RunnableGraph[Future[Int]] =
@@ -109,8 +114,8 @@ object Main {
 				.via(lineSum1)
 				.toMat(streamSum)(Keep.right)
 
-		val res: Future[Int] = g1.run()
-		res.foreach(c => println(s"stream sum is: $c"))			// 1842
+		val res1: Future[Int] = g1.run()
+		res1.foreach( c => println( "sum from g1: " + fmt(c) ) )
 
 
 		val g2: RunnableGraph[Future[Int]] =
@@ -119,8 +124,8 @@ object Main {
 				.via(lineSum2)
 				.toMat(streamSum)(Keep.right)
 
-		val res: Future[Int] = g2.run()
-		res.foreach(c => println(s"stream sum is: $c"))			// 911
+		val res2: Future[Int] = g2.run()
+		res2.foreach( c => println( "sum from g2: " + fmt(c) ) )
 
 		val g3: RunnableGraph[Future[Int]] =
 			rawDataIn
@@ -129,11 +134,10 @@ object Main {
 				.via(lineSum2)
 				.toMat(streamSum)(Keep.right)
 
-		val res: Future[Int] = g3.run()
-		res.foreach(c => println(s"stream sum is: $c"))				// 655
+		val res3: Future[Int] = g3.run()
+		res3.foreach( c => println(s"sum from g3: "+ fmt(c) ) )
 
 	}
-
 
 }
 
