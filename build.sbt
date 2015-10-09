@@ -20,6 +20,7 @@ libraryDependencies ++= {
 		"com.typesafe.akka" 					%%	"akka-slf4j"						% 		"2.4.0",
 		"com.typesafe.akka"					%%	"akka-agent"						% 		"2.4.0",
 		"com.typesafe.akka"		%%		"akka-stream-experimental"	%			"1.0",
+		"com.typesafe.akka"		%%		"akka-http-experimental"		%			"1.0",
 		"net.databinder.dispatch"				%%	"dispatch-core" 					%		"0.11.2",
 		"net.databinder.dispatch" 				%%	"dispatch-json4s-native" 			%		"0.11.2",
 		"com.fasterxml.jackson.module"		%% 	"jackson-module-scala"			%		"2.4.2",

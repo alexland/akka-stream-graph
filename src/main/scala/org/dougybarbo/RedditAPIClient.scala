@@ -11,67 +11,17 @@ import scala.collection.immutable._
 
 object RedditAPI {
 
-	val linksToFetch = 15
-	val subredditsToFetch = 5
-	val commentsToFetch = 2000
-	val commentDepth = 25
+	val linksToFetch = 5
+	val subredditsToFetch = 2
+	val commentsToFetch = 10
+	val commentDepth = 2
 
-	val useragent = Map("User-Agent" -> "wordcloud mcgee")
+	val useragent = "macosx: org.dy.redditapiclient4akkastreams:v1.0"
 
-	def popularLinks(subreddit: String)(implicit ec: ExecutionContext): Future[LinkListing] =
-		withRetry(timedFuture(s"links: r/$subreddit/top") {
-			val page = url(s"http://www.reddit.com/r/$subreddit/top.json") <<? Map("limit" -> linksToFetch.toString, "t" -> "all") <:< useragent
-			Http(page OK dispatch.as.json4s.Json).map(LinkListing.fromJson(subreddit)(_))
-		}, LinkListing(Seq.empty))
+	val url1 = "http://www.reddit.com/r/$subreddit/top.json"
 
 }
 
-object SimpleExample {
-
-	import RedditAPI._
-	import ExecutionContext.Implicits.global
-
-	def run =
-		for {
-			subreddits				<- 		popularSubreddits
-			linklistings				<- 		Future.sequence(subreddits.map(popularLinks))
-			links					= 		linklistings.flatMap(_.links)
-			commentListings		<- 		Future.sequence(links.map(popularComments))
-			comments				= 		commentListings.flatMap(_.comments)
-		} yield comments
-}
 
 
-object LinkListing {
-	def fromJson(subreddit: String)(json: JValue) = {
-		val x = json.\("data").\("children")
-			.children
-			.map(_.\("data").\("id"))
-			.collect{ case JString(s) => Link(s, subreddit)
-		}
-		LinkListing(x)
-	}
-}
-case class LinkListing(links: Seq[Link])
-case class Link(id: String, subreddit: String)
 
-object CommentListing {
-	def fromJson(json: JValue, subreddit: String) = {
-		val x = json.\("data")
-			.filterField{case ("body", _) => true; case _ => false }
-			.collect{ case ("body", JString(s)) => Comment(subreddit, s)}
-		CommentListing(subreddit, x)
-	}
-}
-case class CommentListing(subreddit: String, comments: Seq[Comment])
-case class Comment(subreddit: String, body: String){
-	val alpha = (('a' to 'z') ++ ('A' to 'Z')).toSet
-
-	def normalize(s: Seq[String]): Seq[String] =
-		s.map(_.filter(alpha.contains).map(_.toLower)).filterNot(_.isEmpty)
-
-	def toWordCount: WordCount =
-		normalize(body.split(" ").to[Seq])
-			.groupBy(identity)
-			.mapValues(_.length)
-}
