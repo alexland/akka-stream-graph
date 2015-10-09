@@ -1,7 +1,7 @@
 
 name := "akka-stream-graph"
 
-assemblyJarName in assembly := "EntityResolver.jar"
+assemblyJarName in assembly := "streamGraphs.jar"
 
 version := "1.0-SNAPSHOT"
 
