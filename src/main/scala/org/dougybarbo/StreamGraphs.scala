@@ -74,11 +74,12 @@ object Main {
 		}
 
 		/**
+		*	transformation functions passed to higher-order
+		*	functions in the graph
 		*	variables named t followed by integer are anonymous
 		*	functions that transform individual data lines
 		*/
 		val t1 = (v:Vector[Int]) => v.map(_ / 2)
-
 		val t2 = (v:Vector[Int]) => v.filter(_ <= 25)
 
 		val lineSum1: Flow[RawDataLine, Int, Unit] = Flow[RawDataLine]
@@ -99,8 +100,9 @@ object Main {
 		val res = (g:RunnableGraph[Future[Int]]) => g.run()
 
 		/**
-		*	RunnableGraph instance is immutable, thread-safe, and freely shareable;
-		*	'Broadcast' will propagate back-pressure to its upstream element
+		*	4 RunnableGraph instances, all are
+		*	immutable, thread-safe, and freely shareable;
+		*
 		*/
 		val countGraph: RunnableGraph[Future[Int]] =
 			rawDataIn
@@ -115,7 +117,6 @@ object Main {
 			rawDataIn
 				.via(lineSum1)
 				.toMat(streamSum)(Keep.right)
-
 		res(g1)
 			.foreach( c => println( "sum from g1: " + fmt(c) ) )
 
@@ -125,8 +126,9 @@ object Main {
 				.via(lineDiv)
 				.via(lineSum2)
 				.toMat(streamSum)(Keep.right)
+		res(g2)
+			.foreach( c => println( "sum from g2: " + fmt(c) ) )
 
-		res(g2).foreach( c => println( "sum from g2: " + fmt(c) ) )
 
 		val g3: RunnableGraph[Future[Int]] =
 			rawDataIn
@@ -134,7 +136,6 @@ object Main {
 				.via(lineFilter1)
 				.via(lineSum2)
 				.toMat(streamSum)(Keep.right)
-
 		res(g3)
 			.foreach( c => println(s"sum from g3: "+ fmt(c) ) )
 

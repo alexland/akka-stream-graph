@@ -1,7 +1,7 @@
 
 name := "akka-stream-graph"
 
-assemblyJarName in assembly := "streamGraphs.jar"
+assemblyJarName in assembly := "StreamGraphs.jar"
 
 version := "1.0-SNAPSHOT"
 
