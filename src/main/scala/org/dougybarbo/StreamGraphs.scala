@@ -18,7 +18,6 @@ import scala.util.{
 	Success,
 	Try
 }
-
 import akka.actor.ActorSystem
 import akka.stream.{
 	ActorMaterializer
@@ -44,6 +43,15 @@ object Main {
 		*	immutable, thread-safe, and freely shareable;
 		*
 		*/
+
+		implicit val actorSystem = ActorSystem("entity-resolver")
+		import actorSystem.dispatcher
+		implicit val flowMaterializer = ActorMaterializer()
+
+		val res = (g:RunnableGraph[Future[Int]]) => g.run()
+		val rawDataIn:Source[RawDataLine, Unit] = Source(rawData)
+		val rawDataIn0:Source[RawDataLineSm, Unit] = Source(rawData0)
+
 		val countGraph: RunnableGraph[Future[Int]] =
 			rawDataIn
 				.via(count)
@@ -142,30 +150,6 @@ object Main {
 
 		g7.run()
 
-		// val g8 = FlowGraph.closed() { implicit builder: FlowGraph.Builder[Unit] =>
-		// 	import FlowGraph.Implicits._
-		// 	val bcast = builder.add(Broadcast[RawDataLineSm](2))
-		// 	val merge = builder.add(Zip[RawDataLineSm,RawDataLineSm])
-		//
-		// 	val c0:Flow[RawDataLineSm, RawDataLineSm, Unit] = {
-		// 		Flow[RawDataLineSm].map(twoX(_))
-		// 	}
-		// 	val c1:Flow[RawDataLineSm,RawDataLineSm,Unit] = Flow[RawDataLineSm]
-		// 		.map(oneFifthX(_))
-		// 	val c2:Flow[RawDataLineSm,RawDataLineSm,Unit] = Flow[RawDataLineSm]
-		// 		.map(twoX(_))
-		// 	// c3 concatanates 2 small records into a single big record
-		// 	val c3:Flow[RawDataLineSm,RawDataLine,Unit] = Flow[RawDataLineSm]
-		// 		.map(f1(_))
-		// 	// c4 row-wise sum of a big record
-		// 	val c4:Flow[RawDataLine,Int,Unit] = Flow[RawDataLine]
-		// 		.map(rowSum1(_))
-		// 	val dataOut:Sink[Any,Future[Unit]] = Sink.foreach(println(_))
-		// 	rawDataIn0 ~> c0 ~> bcast ~> c1 ~> merge ~> c3 ~> c4 ~> dataOut
-		// 											bcast ~> c2 ~> merge
-		// }
-		//
-		// g8.run()
 
 
 

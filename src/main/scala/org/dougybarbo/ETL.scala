@@ -1,6 +1,32 @@
 
 package org.dougybarbo
 
+import util.{
+	Random => RND
+}
+import scala.util.{
+	Failure,
+	Success,
+	Try
+}
+import scala.concurrent.{
+	ExecutionContext,
+	Future
+}
+import scala.collection.immutable
+import scala.io.{
+	Source => ioSource
+}
+import akka.actor.ActorSystem
+import akka.stream.{
+	ActorMaterializer
+}
+import akka.stream.io.{
+	Framing,
+	InputStreamSource
+}
+import akka.stream.scaladsl._
+
 
 object ETL {
 
@@ -17,33 +43,35 @@ object ETL {
 	) extends Record
 
 	final case class RawDataLineSm(
-		idx: Int,
-		c1: Int
+		c1: Int,
+		c2: Int
 	) extends Record
 
-	val fnx = () => for (i <- (1 to 4)) yield RND.nextInt(100)
-	val fnx0 = () => for (i <- (1 to 2)) yield RND.nextInt(100)
+	val fnx = () => (for (i <- (1 to 4)) yield RND.nextInt(100))
+		.toVector
+	val fnx0 = () => (for (i <- (1 to 2)) yield RND.nextInt(100))
+		.toVector
+
+	// val fnx1 = (q:Vector[Int]) => q match {
+	// 	case Vector(a, b, c, d) => RawDataLine(a, b, c, d)
+	// 	case Vector(a, b) => RawDataLineSm(a, b)
+	// }
 
 	val fnx1 = (q:Vector[Int]) => q match {
 		case Vector(a, b, c, d) => RawDataLine(a, b, c, d)
-		case Vector(a, b) => RawDataLineSm(a, b)
 	}
 
 	val fnx2 = (q:Vector[Int]) => q match {
 		case Vector(a, b) => RawDataLineSm(a, b)
 	}
 
-	val rawDataIn: Source[RawDataLine, Unit] = Source(
-		(1 to 1000000)
-			.map(_ => fnx().toVector)
+	val rawData = (1 to 10)
+			.map(_ => fnx())
 			.map(c => fnx1(c))
-	)
 
-	val rawDataIn0: Source[RawDataLineSm, Unit] = Source(
-		(1 to 5)
-			.map(_ => fnx0().toVector)
+	val rawData0 = (1 to 10)
+			.map(_ => fnx0())
 			.map(c => fnx2(c))
-	)
 
 	def twoX(r:Record):Record = {
 		r match {
@@ -93,10 +121,6 @@ object ETL {
 	val formatter = java.text.NumberFormat.getIntegerInstance
 	val fmt = (v:Int) => formatter.format(v)
 
-	implicit val actorSystem = ActorSystem("entity-resolver")
-	import actorSystem.dispatcher
-	implicit val flowMaterializer = ActorMaterializer()
-
 	/**
 	*	'count': a reusable Flow that transforms each item in the stream into a
 	*	a '1'
@@ -132,7 +156,5 @@ object ETL {
 		.map(t2(_))
 
 	val streamSum: Sink[Int, Future[Int]] = Sink.fold[Int, Int](0)(_ + _)
-
-	val res = (g:RunnableGraph[Future[Int]]) => g.run()
 
 }
