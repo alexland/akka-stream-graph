@@ -38,12 +38,33 @@ object Main {
 
 	def main(args: Array[String]): Unit = {
 
-		final case class RawDataLine(idx:Int, col1:Int, col2:Int, col3:Int)
+		trait Record {
+			def c1: Int
+			def c2: Int
+		}
+
+		final case class RawDataLine(
+			idx:Int,
+			c1:Int,
+			c2:Int,
+			c3:Int
+		) extends Record
+
+		final case class RawDataLineSm(
+			idx: Int,
+			c1: Int
+		) extends Record
 
 		val fnx = () => for (i <- (1 to 4)) yield RND.nextInt(100)
+		val fnx0 = () => for (i <- (1 to 2)) yield RND.nextInt(100)
 
 		val fnx1 = (q:Vector[Int]) => q match {
 			case Vector(a, b, c, d) => RawDataLine(a, b, c, d)
+			case Vector(a, b) => RawDataLineSm(a, b)
+		}
+
+		val fnx2 = (q:Vector[Int]) => q match {
+			case Vector(a, b) => RawDataLineSm(a, b)
 		}
 
 		val rawDataIn: Source[RawDataLine, Unit] = Source(
@@ -52,10 +73,35 @@ object Main {
 				.map(c => fnx1(c))
 		)
 
+		val rawDataIn0: Source[RawDataLineSm, Unit] = Source(
+			(1 to 5)
+				.map(_ => fnx0().toVector)
+				.map(c => fnx2(c))
+		)
+
+		def twoX(r:Record):Record = {
+			r match {
+				case RawDataLineSm(a, b) => RawDataLineSm(a*2, b*2)
+				case RawDataLine(a, b, c, d) => RawDataLine(a*2, b*2, c*2, d*2)
+			}
+		}
+
+		def twoX(r:RawDataLineSm):RawDataLineSm = {
+			r match {
+				case RawDataLineSm(a, b) => RawDataLineSm(a*2, b*2)
+			}
+		}
+
+		def rowSum(r:RawDataLineSm):Int = {
+			r match {
+				case RawDataLineSm(a, b) => a + b
+			}
+		}
+
+
 		// commify printed integer values
 		val formatter = java.text.NumberFormat.getIntegerInstance
 		val fmt = (v:Int) => formatter.format(v)
-
 
 		implicit val actorSystem = ActorSystem("entity-resolver")
 		import actorSystem.dispatcher
@@ -112,7 +158,6 @@ object Main {
 		res(countGraph)
 			.foreach( c => println( s"total lines processed per graph: " + fmt(c) ) )
 
-
 		val g1: RunnableGraph[Future[Int]] =
 			rawDataIn
 				.via(lineSum1)
@@ -139,6 +184,50 @@ object Main {
 		res(g3)
 			.foreach( c => println(s"sum from g3: "+ fmt(c) ) )
 
-	}
+	// DAG examples
 
+		val c1:Flow[RawDataLine, Int, Unit] = Flow[RawDataLine].map(_ => 1)
+		val c2:Flow[Int, Int, Unit] = Flow[Int].map(_ * 5)
+
+		val s1: Sink[Int, Future[Int]] = Sink.fold[Int, Int](0)(_ + _)
+		val s2: Sink[Int, Future[Int]] = Sink.fold[Int, Int](0)(_ + _)
+
+		val g4 = FlowGraph.closed() { implicit builder: FlowGraph.Builder[Unit] =>
+			import FlowGraph.Implicits._
+			val dataOut:Sink[Any, Future[Unit]] = Sink.foreach(println(_))
+			rawDataIn ~> c1 ~> c2 ~> dataOut
+		}
+
+		g4.run()
+
+		val g5 = FlowGraph.closed() { implicit builder: FlowGraph.Builder[Unit] =>
+			import FlowGraph.Implicits._
+			val bcast = builder.add(Broadcast[Int](2))
+			val c1:Flow[RawDataLine, Int, Unit] = Flow[RawDataLine].map(_ => 1)
+			val c2:Flow[Int, Int, Unit] = Flow[Int].map(_ * 2)
+			val c3:Flow[Int, Int, Unit] = Flow[Int].map(_ * 5)
+			val dataOut1:Sink[Any, Future[Unit]] = Sink.foreach(println(_))
+			val dataOut2:Sink[Any, Future[Unit]] = Sink.foreach(println(_))
+			rawDataIn ~> c1 ~> bcast ~> c2 ~> dataOut1
+			bcast ~> c3 ~> dataOut2
+		}
+
+		g5.run()
+
+		val g6 = FlowGraph.closed() { implicit builder: FlowGraph.Builder[Unit] =>
+			import FlowGraph.Implicits._
+			// val bcast = builder.add(Broadcast[Int](2))
+			// val merge = builder.add(Merge[Int](2))
+			val c0:Flow[RawDataLineSm, RawDataLineSm, Unit] = {
+				Flow[RawDataLineSm].map(twoX(_))
+			}
+			val c1:Flow[RawDataLineSm, Int, Unit] = Flow[RawDataLineSm].map(rowSum(_))
+			val dataOut:Sink[Any, Future[Unit]] = Sink.foreach(println(_))
+			rawDataIn0 ~> c0 ~> c1 ~> dataOut
+		}
+
+		g6.run()
+
+
+	}
 }
