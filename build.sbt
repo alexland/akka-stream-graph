@@ -31,7 +31,7 @@ libraryDependencies ++= {
 
 scalacOptions in Test ++= Seq("-Yrangepos")
 
-mainClass in (Compile, run) := Some("org.dougybarbo.EntityResolver.Main")
+mainClass in (Compile, run) := Some("org.dougybarbo.StreamGraphs.Main")
 
 javacOptions ++= Seq(
 	"-Xlint:unchecked",
