@@ -27,6 +27,6 @@ or you can run these graphs from the scala REPL:
     sbt console
 ```
 ```scala
-    import org.dougybarbo
+    import org.dougybarbo.Main._
     import akka.stream.scaladsl._
 ```

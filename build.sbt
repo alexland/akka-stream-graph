@@ -41,7 +41,7 @@ javacOptions ++= Seq(
 	"-XX:MaxPerSize=512"
 )
 
-Revolver.settings
+seq(Revolver.settings: _*)
 
 assemblyMergeStrategy in assembly := {
 	case PathList("javax", "servlet", xs @ _*)         => MergeStrategy.first
