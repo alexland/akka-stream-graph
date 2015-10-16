@@ -1,6 +1,7 @@
 
 
-def fnx(q:Int):Int = {
+
+def stepFn(q:Int):Int = {
 	q match {
 		case 1 => 5
 		case 2 => 10
@@ -33,10 +34,11 @@ Flow[Int].filter(_ > 2)
 }
 
 val t1:Flow[Int,Int,Unit] = {
-	Flow[Int].map()
+Flow[Int].map(stepFn)
 }
 
-src
-	.via(F1)
-	.via(f1)
-	.runWith(Sink.fold[Int,Int](0)(_ + _))
+val res = src
+.via(F1)
+.via(f1)
+.via(t1)
+.runWith(Sink.fold[Int,Int](0)(_ + _))
